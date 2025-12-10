@@ -65,6 +65,14 @@ export interface ChatMessage {
   text: string;
 }
 
+// --- TWILIO TYPES ---
+export interface TwilioConfig {
+  accountSid: string;
+  authToken: string;
+  phoneNumber: string;
+  enabled: boolean;
+}
+
 // --- ONBOARDING TYPES ---
 
 export interface Service {

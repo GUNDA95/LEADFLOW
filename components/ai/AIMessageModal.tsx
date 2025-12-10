@@ -1,12 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Modal from '../ui/Modal';
 import Button from '../ui/Button';
 import Textarea from '../ui/Textarea';
 import { Lead } from '../../types';
-import { MessageSquare, RefreshCw, Copy, ExternalLink, Sparkles, Loader2 } from 'lucide-react';
-import { analyzeLeadWithAI } from '../../services/geminiService';
+import { MessageSquare, RefreshCw, Copy, ExternalLink, Sparkles, Loader2, Send } from 'lucide-react';
 import { useToast } from '../../contexts/ToastContext';
-import { GoogleGenAI } from "@google/genai";
+import { getTwilioConfig, sendWhatsAppMessage } from '../../services/twilioService';
 
 interface AIMessageModalProps {
   isOpen: boolean;
@@ -27,38 +26,49 @@ const AIMessageModal: React.FC<AIMessageModalProps> = ({ isOpen, onClose, lead }
   const [selectedTemplate, setSelectedTemplate] = useState('');
   const [generatedText, setGeneratedText] = useState('');
   const [loading, setLoading] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [twilioEnabled, setTwilioEnabled] = useState(false);
+
+  useEffect(() => {
+      if (isOpen) {
+          checkTwilio();
+      }
+  }, [isOpen]);
+
+  const checkTwilio = async () => {
+      const config = await getTwilioConfig();
+      if (config && config.enabled) {
+          setTwilioEnabled(true);
+      }
+  };
 
   const generateMessage = async (templateId: string) => {
     setLoading(true);
     setSelectedTemplate(templateId);
     
     try {
-      // Using gemini directly here for specific prompt, or could move to service
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-      const prompt = `
-        Scrivi un messaggio WhatsApp professionale ma cordiale per un lead.
-        
-        Dati Lead:
-        Nome: ${lead.name}
-        Azienda: ${lead.company}
-        Stato: ${lead.status}
-        
-        Obiettivo messaggio: ${TEMPLATES.find(t => t.id === templateId)?.label}
-        
-        Regole:
-        - Max 3-4 frasi
-        - Tono amichevole ma business
-        - Includi una call to action chiara
-        - Usa qualche emoji appropriata
-        - Output solo il testo del messaggio
-      `;
+      // Simulation delay
+      await new Promise(resolve => setTimeout(resolve, 1000));
 
-      const response = await ai.models.generateContent({
-        model: 'gemini-flash-lite-latest',
-        contents: prompt,
-      });
+      let mockMessage = "";
+      switch (templateId) {
+          case 'followup':
+              mockMessage = `Ciao ${lead.name}, grazie per il tempo dedicatoci oggi. Come d'accordo, ti invio i dettagli discussi. Fammi sapere se hai domande! 🚀`;
+              break;
+          case 'intro':
+              mockMessage = `Buongiorno ${lead.name}, ho notato il lavoro di ${lead.company} e penso che potremmo collaborare proficuamente. Hai 5 minuti per una call? 👋`;
+              break;
+          case 'reminder':
+              mockMessage = `Ciao ${lead.name}, volevo solo assicurarmi che tu abbia ricevuto la nostra offerta. Rimango a disposizione! ⏰`;
+              break;
+          case 'reactivation':
+              mockMessage = `Ehi ${lead.name}, è passato un po' di tempo! Abbiamo delle novità che potrebbero interessarti. Ti va di sentirci? 🔄`;
+              break;
+          default:
+              mockMessage = `Messaggio generato per ${lead.name}...`;
+      }
 
-      setGeneratedText(response.text || "Impossibile generare il messaggio.");
+      setGeneratedText(mockMessage);
       setStep(2);
     } catch (error) {
       console.error(error);
@@ -73,11 +83,25 @@ const AIMessageModal: React.FC<AIMessageModalProps> = ({ isOpen, onClose, lead }
     addToast("Copiato negli appunti", "success");
   };
 
-  const openWhatsApp = () => {
-    // Basic clean of phone number required in real app
+  const openWhatsAppLink = () => {
     const phone = lead.phone || ''; 
     const encodedText = encodeURIComponent(generatedText);
     window.open(`https://wa.me/${phone}?text=${encodedText}`, '_blank');
+  };
+
+  const handleSendTwilio = async () => {
+      if (!lead.phone) return addToast('Numero di telefono mancante', 'error');
+      
+      setSending(true);
+      try {
+          await sendWhatsAppMessage(lead.phone, generatedText);
+          addToast('Messaggio inviato con successo!', 'success');
+          onClose();
+      } catch (error) {
+          addToast('Errore invio Twilio. Controlla i log.', 'error');
+      } finally {
+          setSending(false);
+      }
   };
 
   const reset = () => {
@@ -153,11 +177,25 @@ const AIMessageModal: React.FC<AIMessageModalProps> = ({ isOpen, onClose, lead }
                  <Button variant="outline" onClick={copyToClipboard}>
                    <Copy size={16} className="mr-2" /> Copia
                  </Button>
-                 <Button onClick={openWhatsApp} className="bg-[#25D366] hover:bg-[#128C7E] text-white border-transparent">
-                   <MessageSquare size={16} className="mr-2" /> Invia WhatsApp
-                 </Button>
+                 
+                 {twilioEnabled ? (
+                     <Button onClick={handleSendTwilio} disabled={sending} className="bg-[#25D366] hover:bg-[#128C7E] text-white border-transparent">
+                         {sending ? <Loader2 className="animate-spin mr-2" /> : <Send size={16} className="mr-2" />}
+                         Invia Diretto
+                     </Button>
+                 ) : (
+                    <Button onClick={openWhatsAppLink} className="bg-[#25D366] hover:bg-[#128C7E] text-white border-transparent">
+                        <MessageSquare size={16} className="mr-2" /> Apri WhatsApp
+                    </Button>
+                 )}
                </div>
             </div>
+            
+            {!twilioEnabled && (
+                <p className="text-xs text-center text-gray-400 mt-2">
+                    Suggerimento: Configura Twilio in Impostazioni per inviare i messaggi direttamente dal CRM.
+                </p>
+            )}
           </div>
         )}
       </div>

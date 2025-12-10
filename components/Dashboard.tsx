@@ -44,10 +44,13 @@ const Dashboard: React.FC = () => {
 
       // 3. Fetch Appointments (Google Calendar + Supabase)
       let googleCount = 0;
-      if (session?.provider_token) {
+      // Fix: Cast session to any to access provider_token
+      const providerToken = (session as any)?.provider_token;
+      
+      if (providerToken) {
          const now = new Date();
          // Get events for this week
-         const events = await listGoogleEvents(session.provider_token, startOfWeek(now), endOfWeek(now));
+         const events = await listGoogleEvents(providerToken, startOfWeek(now), endOfWeek(now));
          googleCount = events.length;
       }
       
@@ -63,9 +66,6 @@ const Dashboard: React.FC = () => {
 
       // 4. Set Recent Leads
       if (leads) {
-          // Map DB snake_case to CamelCase types if needed, currently Supabase returns snake_case but our types are Camel?
-          // Let's assume standard mapping or update types. 
-          // For now, let's map manually to be safe.
           const mappedLeads: Lead[] = leads.slice(0, 5).map((l: any) => ({
              id: l.id,
              name: l.name,

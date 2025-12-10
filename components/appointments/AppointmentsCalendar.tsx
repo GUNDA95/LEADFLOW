@@ -40,8 +40,11 @@ const AppointmentsCalendar: React.FC = () => {
   const daysOfWeek = ['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom'];
 
   useEffect(() => {
+    // Check connection safely
+    const token = (session as any)?.provider_token;
+    if (token) setGoogleConnected(true);
+    
     fetchAppointments();
-    if (session?.provider_token) setGoogleConnected(true);
   }, [currentDate, session]);
 
   const fetchAppointments = async () => {
@@ -71,9 +74,10 @@ const AppointmentsCalendar: React.FC = () => {
     }
 
     // 2. Fetch from Google Calendar (if connected)
-    if (session?.provider_token) {
+    const providerToken = (session as any)?.provider_token;
+    if (providerToken) {
        try {
-           const googleEvents = await listGoogleEvents(session.provider_token, startDate, endDate);
+           const googleEvents = await listGoogleEvents(providerToken, startDate, endDate);
            const googleMapped: Appointment[] = googleEvents.map(ev => ({
                id: ev.id,
                title: ev.summary || '(Nessun titolo)',
@@ -248,9 +252,14 @@ const AppointmentsCalendar: React.FC = () => {
                  <p className={`text-xs font-bold ${googleError ? 'text-red-800' : googleConnected ? 'text-green-800' : 'text-gray-700'}`}>
                      Google Calendar
                  </p>
-                 <p className={`text-[10px] ${googleError ? 'text-red-600' : googleConnected ? 'text-green-600' : 'text-gray-500'}`}>
-                    {googleError ? 'Errore Sync (Riconnettiti)' : googleConnected ? 'Sincronizzazione attiva' : 'Non connesso'}
-                 </p>
+                 <div className="flex items-center gap-1">
+                    <p className={`text-[10px] ${googleError ? 'text-red-600' : googleConnected ? 'text-green-600' : 'text-gray-500'}`}>
+                        {googleError ? 'Errore Sync (Riconnettiti)' : googleConnected ? 'Sincronizzazione attiva' : 'Non connesso'}
+                    </p>
+                    {(!googleConnected || googleError) && (
+                        <button onClick={() => window.location.reload()} className="text-[10px] underline text-primary-600 ml-1">Refresh</button>
+                    )}
+                 </div>
              </div>
         </div>
       </div>

@@ -1,14 +1,50 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Card from './ui/Card';
 import Input from './ui/Input';
 import Button from './ui/Button';
 import Tabs from './ui/Tabs';
-import { User, CreditCard, Bell, Key, Shield, Smartphone, AlertTriangle, ExternalLink } from 'lucide-react';
+import { User, CreditCard, Bell, Key, Shield, Smartphone, AlertTriangle, ExternalLink, Save, Loader2, Check } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { useToast } from '../contexts/ToastContext';
+import { saveTwilioConfig, getTwilioConfig } from '../services/twilioService';
 
 const Settings: React.FC = () => {
   const { user } = useAuth();
+  const { addToast } = useToast();
   const [activeTab, setActiveTab] = useState('profile');
+  
+  // Twilio State
+  const [twilioConfig, setTwilioConfig] = useState({
+      accountSid: '',
+      authToken: '',
+      phoneNumber: '',
+      enabled: false
+  });
+  const [savingTwilio, setSavingTwilio] = useState(false);
+
+  useEffect(() => {
+    if (activeTab === 'whatsapp') {
+        loadTwilio();
+    }
+  }, [activeTab]);
+
+  const loadTwilio = async () => {
+    const config = await getTwilioConfig();
+    if (config) setTwilioConfig(config);
+  };
+
+  const handleSaveTwilio = async () => {
+      setSavingTwilio(true);
+      try {
+          await saveTwilioConfig(twilioConfig);
+          addToast('Configurazione Twilio salvata!', 'success');
+      } catch (error) {
+          addToast('Errore nel salvataggio.', 'error');
+          console.error(error);
+      } finally {
+          setSavingTwilio(false);
+      }
+  };
 
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
@@ -66,33 +102,51 @@ const Settings: React.FC = () => {
 
                 {activeTab === 'whatsapp' && (
                     <div className="space-y-6">
-                        <h3 className="text-lg font-bold text-gray-900 border-b border-gray-100 pb-2">Stato Integrazioni</h3>
+                        <h3 className="text-lg font-bold text-gray-900 border-b border-gray-100 pb-2">Twilio WhatsApp API</h3>
                         
-                        <div className="flex items-center justify-between p-4 bg-green-50 border border-green-200 rounded-lg">
-                            <div className="flex items-center gap-3">
-                                <div className="bg-green-500 text-white p-2 rounded-full">
-                                    <Smartphone size={20} />
-                                </div>
-                                <div>
-                                    <p className="font-bold text-green-900">WhatsApp Business API</p>
-                                    <p className="text-sm text-green-700">Connesso: +39 333 ****888</p>
-                                </div>
-                            </div>
-                            <Button variant="outline" size="sm" className="border-green-300 text-green-700 bg-white">Configura</Button>
+                        <div className="p-4 bg-blue-50 text-blue-800 text-sm rounded-lg">
+                            <p className="font-semibold mb-1">Perché serve Twilio?</p>
+                            <p>Per inviare messaggi automatici dal CRM, devi collegare un account Twilio attivo con WhatsApp abilitato.</p>
                         </div>
 
-                        <div className="flex items-center justify-between p-4 bg-gray-50 border border-gray-200 rounded-lg opacity-70">
-                             <div className="flex items-center gap-3">
-                                <div className="bg-gray-400 text-white p-2 rounded-full">
-                                    <Shield size={20} />
-                                </div>
-                                <div>
-                                    <p className="font-bold text-gray-900">HubSpot Sync</p>
-                                    <p className="text-sm text-gray-500">Non connesso</p>
-                                </div>
+                        <div className="space-y-4">
+                            <Input 
+                                label="Account SID" 
+                                placeholder="ACxxxxxxxx..."
+                                value={twilioConfig.accountSid}
+                                onChange={(e) => setTwilioConfig({...twilioConfig, accountSid: e.target.value})}
+                            />
+                            <Input 
+                                label="Auth Token" 
+                                type="password" 
+                                placeholder="••••••••••••"
+                                value={twilioConfig.authToken}
+                                onChange={(e) => setTwilioConfig({...twilioConfig, authToken: e.target.value})}
+                            />
+                            <Input 
+                                label="Numero WhatsApp Twilio" 
+                                placeholder="+14155238886"
+                                value={twilioConfig.phoneNumber}
+                                onChange={(e) => setTwilioConfig({...twilioConfig, phoneNumber: e.target.value})}
+                            />
+                            
+                            <div className="flex items-center gap-3 pt-2">
+                                <label className="relative inline-flex items-center cursor-pointer">
+                                    <input type="checkbox" checked={twilioConfig.enabled} onChange={() => setTwilioConfig({...twilioConfig, enabled: !twilioConfig.enabled})} className="sr-only peer" />
+                                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-600"></div>
+                                    <span className="ml-3 text-sm font-medium text-gray-900">Abilita invio messaggi</span>
+                                </label>
                             </div>
-                            <Button variant="outline" size="sm">Connetti</Button>
                         </div>
+
+                        <div className="pt-4 flex justify-end">
+                            <Button onClick={handleSaveTwilio} disabled={savingTwilio}>
+                                {savingTwilio ? <Loader2 className="animate-spin mr-2"/> : <Save className="mr-2" size={16}/>}
+                                Salva Configurazione
+                            </Button>
+                        </div>
+
+                        <hr className="my-6 border-gray-100" />
 
                         {/* Google Troubleshooting Box */}
                         <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mt-6">

@@ -10,7 +10,7 @@ import Automations from './components/Automations';
 import Settings from './components/Settings';
 import Analytics from './components/Analytics';
 import { Lead, AuthRoute } from './types';
-import { Loader2, Wrench } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ToastProvider } from './contexts/ToastContext';
 import Login from './components/auth/Login';
@@ -86,9 +86,6 @@ const AppContent: React.FC = () => {
   
   // View State for sub-pages
   const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
-
-  // Dev mode helper
-  const forceOnboarding = () => setShowOnboarding(true);
 
   useEffect(() => {
     // Determine if onboarding should be shown based on user metadata
@@ -169,19 +166,6 @@ const AppContent: React.FC = () => {
       <Layout activeTab={activeTab} setActiveTab={handleTabChange}>
         {renderContent()}
       </Layout>
-
-      {/* DEV TOOLS */}
-      <div className="fixed bottom-4 left-4 z-[60] md:block hidden group">
-        <div className="bg-gray-900 text-white p-2 rounded-full shadow-lg opacity-50 hover:opacity-100 transition-opacity cursor-pointer">
-          <Wrench size={16} />
-        </div>
-        <div className="absolute bottom-full left-0 mb-2 w-48 bg-white rounded-lg shadow-xl border border-gray-200 p-2 hidden group-hover:block">
-           <p className="text-xs font-bold text-gray-500 mb-2 px-2">DEV TOOLS</p>
-           <button onClick={forceOnboarding} className="w-full text-left text-xs p-2 hover:bg-gray-100 rounded text-gray-700">
-             Restart Onboarding Flow
-           </button>
-        </div>
-      </div>
     </div>
   );
 };

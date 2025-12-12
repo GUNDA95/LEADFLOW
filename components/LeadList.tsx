@@ -9,6 +9,7 @@ import {
   Search, Filter, Download, Plus, MoreHorizontal, 
   ChevronLeft, ChevronRight, ArrowUpDown, Mail, Phone, Sparkles
 } from 'lucide-react';
+import { supabase } from '../lib/supabaseClient'; // Import supabase directly if needed for fetching, though currently leads comes from props or fetching logic inside
 
 interface LeadListProps {
   leads: Lead[];
@@ -16,16 +17,49 @@ interface LeadListProps {
 }
 
 const LeadList: React.FC<LeadListProps> = ({ leads: initialLeads, onLeadClick }) => {
+  // In a real implementation where LeadList fetches its own data, we would use state.
+  // Since App.tsx currently passes [] and handles fetching or we fetch here:
   const [leads, setLeads] = useState<Lead[]>(initialLeads);
   const [loading, setLoading] = useState(true);
   const [sortConfig, setSortConfig] = useState<{key: keyof Lead, direction: 'asc' | 'desc'} | null>(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 
-  // Mock loading for realistic feel
+  // Fetch leads from Supabase directly in this component to ensure data is real
   useEffect(() => {
-    const timer = setTimeout(() => setLoading(false), 800);
-    return () => clearTimeout(timer);
+    fetchLeads();
   }, []);
+
+  const fetchLeads = async () => {
+    setLoading(true);
+    try {
+        const { data, error } = await supabase
+            .from('leads')
+            .select('*')
+            .order('created_at', { ascending: false });
+        
+        if (error) throw error;
+        
+        if (data) {
+            const mappedLeads: Lead[] = data.map((l: any) => ({
+                id: l.id,
+                name: l.name,
+                company: l.company,
+                email: l.email,
+                phone: l.phone,
+                status: l.status,
+                value: l.value,
+                lastContact: l.last_contact || l.created_at,
+                notes: l.notes,
+                createdAt: l.created_at
+            }));
+            setLeads(mappedLeads);
+        }
+    } catch (error) {
+        console.error('Error fetching leads:', error);
+    } finally {
+        setLoading(false);
+    }
+  };
 
   const getStatusVariant = (status: string) => {
     switch (status) {
@@ -72,7 +106,7 @@ const LeadList: React.FC<LeadListProps> = ({ leads: initialLeads, onLeadClick })
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-in fade-in duration-300">
       {/* Actions Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
@@ -132,45 +166,53 @@ const LeadList: React.FC<LeadListProps> = ({ leads: initialLeads, onLeadClick })
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {sortedLeads.map((lead) => (
-                <tr 
-                  key={lead.id} 
-                  className="hover:bg-gray-50/50 transition-colors cursor-pointer"
-                  onClick={() => onLeadClick(lead)}
-                >
-                  <td className="px-6 py-4">
-                    <div>
-                      <div className="font-medium text-gray-900">{lead.name}</div>
-                      <div className="text-gray-500 text-xs">{lead.company}</div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <Badge variant={getStatusVariant(lead.status)}>{lead.status}</Badge>
-                  </td>
-                  <td className="px-6 py-4 text-right font-medium text-gray-900">
-                    €{lead.value.toLocaleString()}
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="flex gap-2 text-gray-400">
-                      <div className="hover:text-gray-600 p-1" onClick={e => e.stopPropagation()}><Mail size={16} /></div>
-                      <div className="hover:text-gray-600 p-1" onClick={e => e.stopPropagation()}><Phone size={16} /></div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 text-gray-500">
-                    {new Date(lead.lastContact).toLocaleDateString()}
-                  </td>
-                  <td className="px-6 py-4 text-center">
-                    <button className="p-1 hover:bg-gray-100 rounded text-gray-400 hover:text-gray-600" onClick={e => e.stopPropagation()}>
-                      <MoreHorizontal size={18} />
-                    </button>
-                  </td>
-                </tr>
-              ))}
+              {sortedLeads.length === 0 ? (
+                 <tr>
+                    <td colSpan={6} className="px-6 py-10 text-center text-gray-400">
+                        Nessun lead trovato. Aggiungine uno nuovo!
+                    </td>
+                 </tr>
+              ) : (
+                sortedLeads.map((lead) => (
+                    <tr 
+                    key={lead.id} 
+                    className="hover:bg-gray-50/50 transition-colors cursor-pointer"
+                    onClick={() => onLeadClick(lead)}
+                    >
+                    <td className="px-6 py-4">
+                        <div>
+                        <div className="font-medium text-gray-900">{lead.name}</div>
+                        <div className="text-gray-500 text-xs">{lead.company}</div>
+                        </div>
+                    </td>
+                    <td className="px-6 py-4">
+                        <Badge variant={getStatusVariant(lead.status)}>{lead.status}</Badge>
+                    </td>
+                    <td className="px-6 py-4 text-right font-medium text-gray-900">
+                        €{lead.value.toLocaleString()}
+                    </td>
+                    <td className="px-6 py-4">
+                        <div className="flex gap-2 text-gray-400">
+                        <div className="hover:text-gray-600 p-1" onClick={e => e.stopPropagation()}><Mail size={16} /></div>
+                        <div className="hover:text-gray-600 p-1" onClick={e => e.stopPropagation()}><Phone size={16} /></div>
+                        </div>
+                    </td>
+                    <td className="px-6 py-4 text-gray-500">
+                        {new Date(lead.lastContact).toLocaleDateString()}
+                    </td>
+                    <td className="px-6 py-4 text-center">
+                        <button className="p-1 hover:bg-gray-100 rounded text-gray-400 hover:text-gray-600" onClick={e => e.stopPropagation()}>
+                        <MoreHorizontal size={18} />
+                        </button>
+                    </td>
+                    </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
         <div className="p-4 border-t border-gray-200 flex items-center justify-between text-sm text-gray-500">
-          <span>Mostrando {leads.length} di {leads.length} risultati</span>
+          <span>Mostrando {leads.length} risultati</span>
           <div className="flex gap-1">
              <Button variant="outline" size="sm" disabled><ChevronLeft size={16} /></Button>
              <Button variant="outline" size="sm" disabled><ChevronRight size={16} /></Button>
@@ -211,9 +253,7 @@ const LeadList: React.FC<LeadListProps> = ({ leads: initialLeads, onLeadClick })
       <AddLeadModal 
         isOpen={isAddModalOpen} 
         onClose={() => setIsAddModalOpen(false)}
-        onSuccess={() => {
-           // In real app, re-fetch leads here
-        }}
+        onSuccess={fetchLeads}
       />
     </div>
   );

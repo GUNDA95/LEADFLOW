@@ -1,7 +1,7 @@
 import { Lead } from '../types';
 
-// Mock implementation since @google/genai is temporarily removed
-const MODEL_NAME = 'gemini-flash-lite-latest';
+// Mock implementation - No external imports needed for now
+// This prevents build errors on Vercel related to @google/genai resolution
 
 export const analyzeLeadWithAI = async (lead: Lead): Promise<string> => {
   console.log(`[Mock AI] Analyzing lead: ${lead.name}`);

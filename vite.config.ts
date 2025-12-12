@@ -4,22 +4,10 @@ import react from '@vitejs/plugin-react';
 export default defineConfig({
   plugins: [react()],
   build: {
-    rollupOptions: {
-      external: [
-        'react',
-        'react-dom',
-        'react-dom/client',
-        'lucide-react',
-        '@supabase/supabase-js',
-        'recharts',
-        'clsx',
-        'tailwind-merge',
-        'date-fns',
-        'date-fns/locale'
-      ]
-    }
+    outDir: 'dist',
   },
   define: {
-    'process.env.API_KEY': JSON.stringify(process.env.API_KEY)
+    // Falls back to empty string to prevent runtime crashes if env var is not set on Vercel yet
+    'process.env.API_KEY': JSON.stringify(process.env.API_KEY || '')
   }
 });
